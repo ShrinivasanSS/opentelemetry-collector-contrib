@@ -8,12 +8,18 @@ services:
       - "16686:16686"
       - "14268"
       - "14250"
+    mem_limit: 768m
+    mem_reservation: 128M
+    cpus: 0.25
 
   # Zipkin
   zipkin-all-in-one:
     image: openzipkin/zipkin:latest
     ports:
       - "9411:9411"
+    mem_limit: 768m
+    mem_reservation: 128M
+    cpus: 0.25      
 
   # Collector
   otel-collector:
@@ -31,6 +37,10 @@ services:
     depends_on:
       - jaeger-all-in-one
       - zipkin-all-in-one
+    mem_limit: 768m
+    mem_reservation: 128M
+    cpus: 0.25
+
 
   demo-client:
     build:
@@ -41,6 +51,9 @@ services:
       - DEMO_SERVER_ENDPOINT=http://demo-server:7080/hello
     depends_on:
       - demo-server
+    mem_limit: 768m
+    mem_reservation: 128M
+    cpus: 0.25
 
   demo-server:
     build:
@@ -52,6 +65,9 @@ services:
       - "7080"
     depends_on:
       - otel-collector
+    mem_limit: 768m
+    mem_reservation: 128M
+    cpus: 0.25
 
   prometheus:
     container_name: prometheus
@@ -60,3 +76,61 @@ services:
       - ./prometheus.yaml:/etc/prometheus/prometheus.yml
     ports:
       - "9090:9090"
+    mem_limit: 768m
+    mem_reservation: 128M
+    cpus: 0.25
+
+  demo-data:
+    container_name: demo_data
+    image: demo:app
+    mem_limit: 128m
+    mem_reservation: 128M
+    cpus: 0.25
+
+  # Agent
+  otel-agent:
+    image: ${OTELCOL_IMG}
+    command: ["--config=/etc/otel-agent-config.yaml", "${OTELCOL_ARGS}"]
+    volumes:
+      - ./otel-agent-config.yaml:/etc/otel-agent-config.yaml
+    depends_on:
+      - otel-collector
+    mem_limit: 512m
+    mem_reservation: 128M
+    cpus: 0.25
+
+
+  zipkin-emitter:
+    image: omnition/synthetic-load-generator:1.0.25
+    environment:
+      - ZIPKINV2_JSON_URL=http://otel-agent:9411/api/v2/spans
+    depends_on:
+      - otel-agent
+    mem_limit: 512m
+    mem_reservation: 128M
+    cpus: 0.25
+
+
+  metrics-load-generator:
+    build:
+      dockerfile: Dockerfile
+      context: ./app
+    environment:
+      - OTEL_AGENT_ENDPOINT=otel-agent:4317
+    depends_on:
+      - otel-agent
+    mem_limit: 512m
+    mem_reservation: 128M
+    cpus: 0.25
+
+  # Synthetic load generators
+  jaeger-emitter:
+    image: omnition/synthetic-load-generator:1.0.25
+    environment:
+      - JAEGER_COLLECTOR_URL=http://otel-agent:14268
+    depends_on:
+      - otel-agent
+    mem_limit: 512m
+    mem_reservation: 128M
+    cpus: 0.25
+

@@ -17,9 +17,9 @@ services:
     image: openzipkin/zipkin:latest
     ports:
       - "9411:9411"
-    mem_limit: 768m
+    mem_limit: 1G
     mem_reservation: 128M
-    cpus: 0.25      
+    cpus: 0.5      
 
   # Collector
   otel-collector:
@@ -27,6 +27,7 @@ services:
     command: ["--config=/etc/otel-collector-config.yaml", "${OTELCOL_ARGS}"]
     volumes:
       - ./otel-collector-config.yaml:/etc/otel-collector-config.yaml
+      - ./data/:/home/data/
     ports:
       - "1888:1888"   # pprof extension
       - "8888:8888"   # Prometheus metrics exposed by the collector
@@ -62,7 +63,7 @@ services:
     environment:
       - OTEL_EXPORTER_OTLP_ENDPOINT=otel-collector:4317
     ports:
-      - "7080"
+      - "7080:7080"
     depends_on:
       - otel-collector
     mem_limit: 768m
@@ -80,19 +81,13 @@ services:
     mem_reservation: 128M
     cpus: 0.25
 
-  demo-data:
-    container_name: demo_data
-    image: demo:app
-    mem_limit: 128m
-    mem_reservation: 128M
-    cpus: 0.25
-
   # Agent
   otel-agent:
     image: ${OTELCOL_IMG}
     command: ["--config=/etc/otel-agent-config.yaml", "${OTELCOL_ARGS}"]
     volumes:
       - ./otel-agent-config.yaml:/etc/otel-agent-config.yaml
+      - ./data/:/home/data/
     depends_on:
       - otel-collector
     mem_limit: 512m

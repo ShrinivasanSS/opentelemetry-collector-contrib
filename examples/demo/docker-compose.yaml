@@ -120,12 +120,25 @@ services:
 
   # Synthetic load generators
   jaeger-emitter:
-    image: omnition/synthetic-load-generator:1.0.25
+    image: omnition/synthetic-load-generator:1.0.29
+    volumes:
+      - ./topologies/hipster-shop-slow.json:/opt/omnition/topologies/hipster-shop-slow.json
     environment:
       - JAEGER_COLLECTOR_URL=http://otel-agent:14268
+      - TOPOLOGY_FILE=/opt/omnition/topologies/hipster-shop-slow.json
     depends_on:
       - otel-agent
     mem_limit: 512m
     mem_reservation: 128M
     cpus: 0.25
+# Synthetic load generators
+ #jaeger-emitter_2:
+ #  image: omnition/synthetic-load-generator:1.0.25
+ #  environment:
+ #    - JAEGER_COLLECTOR_URL=http://otel-agent:14268
+ #  depends_on:
+ #    - otel-agent
+ #  mem_limit: 512m
+ #  mem_reservation: 128M
+ #  cpus: 0.25
 

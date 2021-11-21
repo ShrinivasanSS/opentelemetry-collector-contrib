@@ -1,4 +1,4 @@
-module github.com/open-telemetry/opentelemetry-collector-contrib/exporter/site24x7fileexporter
+module github.com/open-telemetry/opentelemetry-collector-contrib/exporter/site24x7exporter
 
 go 1.17
 

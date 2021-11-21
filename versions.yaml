@@ -113,6 +113,7 @@ module-sets:
       - github.com/open-telemetry/opentelemetry-collector-contrib/exporter/fileexporter
       - github.com/open-telemetry/opentelemetry-collector-contrib/exporter/jaegerexporter
       - github.com/open-telemetry/opentelemetry-collector-contrib/exporter/signalfxexporter
+      - github.com/open-telemetry/opentelemetry-collector-contrib/exporter/site24x7exporter
       - github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter
       - github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awscloudwatchlogsexporter
       - github.com/open-telemetry/opentelemetry-collector-contrib/exporter/awsprometheusremotewriteexporter

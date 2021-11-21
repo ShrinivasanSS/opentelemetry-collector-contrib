@@ -11,8 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-
-package site24x7fileexporter
+package site24x7exporter
 
 import (
 	"context"
@@ -30,7 +29,7 @@ import (
 )
 
 func TestFileTracesExporter(t *testing.T) {
-	fe := &site24x7fileexporter{path: tempFileName(t)}
+	fe := &site24x7exporter{path: tempFileName(t)}
 	require.NotNil(t, fe)
 
 	td := testdata.GenerateTracesTwoSpansSameResource()
@@ -48,7 +47,7 @@ func TestFileTracesExporter(t *testing.T) {
 
 func TestFileTracesExporterError(t *testing.T) {
 	mf := &errorWriter{}
-	fe := &site24x7fileexporter{file: mf}
+	fe := &site24x7exporter{file: mf}
 	require.NotNil(t, fe)
 
 	td := testdata.GenerateTracesTwoSpansSameResource()
@@ -58,7 +57,7 @@ func TestFileTracesExporterError(t *testing.T) {
 }
 
 func TestFileMetricsExporter(t *testing.T) {
-	fe := &site24x7fileexporter{path: tempFileName(t)}
+	fe := &site24x7exporter{path: tempFileName(t)}
 	require.NotNil(t, fe)
 
 	md := testdata.GenerateMetricsTwoMetrics()
@@ -76,7 +75,7 @@ func TestFileMetricsExporter(t *testing.T) {
 
 func TestFileMetricsExporterError(t *testing.T) {
 	mf := &errorWriter{}
-	fe := &site24x7fileexporter{file: mf}
+	fe := &site24x7exporter{file: mf}
 	require.NotNil(t, fe)
 
 	md := testdata.GenerateMetricsTwoMetrics()
@@ -86,7 +85,7 @@ func TestFileMetricsExporterError(t *testing.T) {
 }
 
 func TestFileLogsExporter(t *testing.T) {
-	fe := &site24x7fileexporter{path: tempFileName(t)}
+	fe := &site24x7exporter{path: tempFileName(t)}
 	require.NotNil(t, fe)
 
 	ld := testdata.GenerateLogsTwoLogRecordsSameResource()
@@ -104,7 +103,7 @@ func TestFileLogsExporter(t *testing.T) {
 
 func TestFileLogsExporterErrors(t *testing.T) {
 	mf := &errorWriter{}
-	fe := &site24x7fileexporter{file: mf}
+	fe := &site24x7exporter{file: mf}
 	require.NotNil(t, fe)
 
 	ld := testdata.GenerateLogsTwoLogRecordsSameResource()

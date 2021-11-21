@@ -21,6 +21,8 @@ Example:
 
 ```yaml
 exporters:
-  file:
+  site24x7:
     path: ./filename.json
+    url: http://localhost/opentelemetry
+    apikey: 12345
 ```

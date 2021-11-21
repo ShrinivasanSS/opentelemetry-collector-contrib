@@ -31,6 +31,7 @@ require (
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/sapmexporter v0.35.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/sentryexporter v0.35.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/signalfxexporter v0.35.0
+	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/site24x7exporter v0.35.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter v0.35.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/stackdriverexporter v0.35.0
 	github.com/open-telemetry/opentelemetry-collector-contrib/exporter/sumologicexporter v0.35.0
@@ -506,6 +507,8 @@ replace github.com/open-telemetry/opentelemetry-collector-contrib/exporter/sapme
 replace github.com/open-telemetry/opentelemetry-collector-contrib/exporter/sentryexporter => ./exporter/sentryexporter
 
 replace github.com/open-telemetry/opentelemetry-collector-contrib/exporter/signalfxexporter => ./exporter/signalfxexporter
+
+replace github.com/open-telemetry/opentelemetry-collector-contrib/exporter/site24x7exporter => ./exporter/site24x7exporter
 
 replace github.com/open-telemetry/opentelemetry-collector-contrib/exporter/splunkhecexporter => ./exporter/splunkhecexporter
 

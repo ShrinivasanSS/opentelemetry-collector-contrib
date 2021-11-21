@@ -12,5 +12,5 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// Package site24x7fileexporter exports data to files.
-package site24x7fileexporter
+// Package site24x7exporter exports data to files.
+package site24x7exporter

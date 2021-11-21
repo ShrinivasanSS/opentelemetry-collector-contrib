@@ -5,8 +5,8 @@ processors:
   nop:
 
 exporters:
-  site24x7file:
-  site24x7file/2:
+  site24x7:
+  site24x7/2:
     # This will write the pipeline data to a JSON file.
     # The data is written in Protobuf JSON encoding
     # (https://developers.google.com/protocol-buffers/docs/proto3#json).
@@ -20,7 +20,7 @@ service:
     traces:
       receivers: [nop]
       processors: [nop]
-      exporters: [site24x7file]
+      exporters: [site24x7]
     metrics:
       receivers: [nop]
-      exporters: [site24x7file,site24x7file/2]
+      exporters: [site24x7,site24x7/2]

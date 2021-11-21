@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package site24x7fileexporter
+package site24x7exporter
 
 import (
 	"context"
@@ -26,7 +26,7 @@ import (
 
 const (
 	// The value of "type" key in configuration.
-	typeStr = "site24x7file"
+	typeStr = "site24x7"
 )
 
 // NewFactory creates a factory for OTLP exporter.
@@ -42,6 +42,8 @@ func NewFactory() component.ExporterFactory {
 func createDefaultConfig() config.Exporter {
 	return &Config{
 		ExporterSettings: config.NewExporterSettings(config.NewID(typeStr)),
+		TimeoutSettings:  exporterhelper.DefaultTimeoutSettings(),
+		RetrySettings:    exporterhelper.DefaultRetrySettings(),
 	}
 }
 
@@ -51,12 +53,16 @@ func createTracesExporter(
 	cfg config.Exporter,
 ) (component.TracesExporter, error) {
 	fe := exporters.GetOrAdd(cfg, func() component.Component {
-		return &site24x7fileexporter{path: cfg.(*Config).Path}
+		return &site24x7exporter{
+			path: cfg.(*Config).Path,
+			url:  cfg.(*Config).Url,
+			apikey: cfg.(*Config).APIKEY,
+		}
 	})
 	return exporterhelper.NewTracesExporter(
 		cfg,
 		set,
-		fe.Unwrap().(*site24x7fileexporter).ConsumeTraces,
+		fe.Unwrap().(*site24x7exporter).ConsumeTraces,
 		exporterhelper.WithStart(fe.Start),
 		exporterhelper.WithShutdown(fe.Shutdown),
 	)
@@ -68,12 +74,16 @@ func createMetricsExporter(
 	cfg config.Exporter,
 ) (component.MetricsExporter, error) {
 	fe := exporters.GetOrAdd(cfg, func() component.Component {
-		return &site24x7fileexporter{path: cfg.(*Config).Path}
+		return &site24x7exporter{
+			path: cfg.(*Config).Path,
+			url:  cfg.(*Config).Url,
+			apikey: cfg.(*Config).APIKEY,
+		}
 	})
 	return exporterhelper.NewMetricsExporter(
 		cfg,
 		set,
-		fe.Unwrap().(*site24x7fileexporter).ConsumeMetrics,
+		fe.Unwrap().(*site24x7exporter).ConsumeMetrics,
 		exporterhelper.WithStart(fe.Start),
 		exporterhelper.WithShutdown(fe.Shutdown),
 	)
@@ -85,12 +95,16 @@ func createLogsExporter(
 	cfg config.Exporter,
 ) (component.LogsExporter, error) {
 	fe := exporters.GetOrAdd(cfg, func() component.Component {
-		return &site24x7fileexporter{path: cfg.(*Config).Path}
+		return &site24x7exporter{
+			path: cfg.(*Config).Path,
+			url:  cfg.(*Config).Url,
+			apikey: cfg.(*Config).APIKEY,
+		}
 	})
 	return exporterhelper.NewLogsExporter(
 		cfg,
 		set,
-		fe.Unwrap().(*site24x7fileexporter).ConsumeLogs,
+		fe.Unwrap().(*site24x7exporter).ConsumeLogs,
 		exporterhelper.WithStart(fe.Start),
 		exporterhelper.WithShutdown(fe.Shutdown),
 	)

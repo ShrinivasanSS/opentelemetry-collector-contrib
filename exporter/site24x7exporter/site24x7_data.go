@@ -24,6 +24,11 @@ type TelemetrySpanLink struct{
 	LinkSpanID string `json:"link.spanID"`
 	LinkTraceID string `json:"link.traceID"`
 }
+type TelemetryCustomParam struct{
+	Key string `json:"key"`
+	Value interface{} `json:"value"`
+}
+
 type TelemetrySpan struct{
 	TraceId string `json:"trace_id"`
 	SpanId string `json:"span_id"`
@@ -84,6 +89,9 @@ type TelemetrySpan struct{
 	IsRoot bool `json:"root"`
 	// if parentspanid is empty. 
 	HasError bool `json:"error"`
+
+	// cusom_param
+	CustomParams []TelemetryCustomParam `json:"custom_param"`
 
 	resourceAttributes telemetryAttributes  //`json:"ResourceAttributes"`
 	spanAttributes telemetryAttributes  //`json:"SpanAttributes"`

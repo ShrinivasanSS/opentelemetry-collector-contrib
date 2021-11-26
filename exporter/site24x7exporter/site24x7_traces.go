@@ -146,7 +146,14 @@ func (e *site24x7exporter) CreateTelemetrySpan(span pdata.Span,
 	}
 
 	isRoot := span.ParentSpanID().IsEmpty()
-	
+	telemetryParams := make([]TelemetryCustomParam, 0, len(spanAttr) )
+	for k,v := range spanAttr {
+		telemetrycustomParam := TelemetryCustomParam{
+			Key: k,
+			Value: v,
+		}
+		telemetryParams = append(telemetryParams, telemetrycustomParam)
+	}
 	
 	tspan := TelemetrySpan{
 		SpanId: span.SpanID().HexString(),
@@ -196,6 +203,8 @@ func (e *site24x7exporter) CreateTelemetrySpan(span pdata.Span,
 
 		IsRoot: isRoot,
 		HasError: hasError,
+
+		CustomParams: telemetryParams,
 
 	}
 	return tspan;

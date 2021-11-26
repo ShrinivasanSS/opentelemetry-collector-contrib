@@ -41,18 +41,19 @@ func (e *site24x7exporter) CreateLogItem(logrecord pdata.LogRecord, resourceAttr
 	case pdata.AttributeValueTypeMap:
 		tlogKvList := logrecord.Body().MapVal().AsRaw()
 		// if kvlist gives "msg":"<logmsg>"
-		tlogMsg = tlogKvList["msg"].(string)
-		if len(tlogMsg) <= 0 {
+		if attrVal, found := tlogKvList["msg"]; found {
 			//tLogValue := v1.KeyValueList(tlogKvList).GetValues()
+			tlogMsg = attrVal.(string)
+		} else {
 			tlogMsg = logrecord.Body().AsString()
 		}
-		tlogKvSpanId := tlogKvList["span_id"].(string)
-		if len(tlogKvSpanId) > 0 {
-			tlogSpanId = tlogKvSpanId
+		
+		if tlogKvSpanId,found := tlogKvList["span_id"]; found {
+			tlogSpanId = tlogKvSpanId.(string)
 		}
-		tlogKvTraceId := tlogKvList["trace_id"].(string)
-		if len(tlogKvTraceId) > 0 {
-			tlogTraceId = tlogKvTraceId
+		
+		if tlogKvTraceId,found := tlogKvList["trace_id"]; found {
+			tlogTraceId = tlogKvTraceId.(string)
 		}
 	}
 

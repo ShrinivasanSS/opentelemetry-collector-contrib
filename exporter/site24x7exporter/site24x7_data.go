@@ -32,7 +32,7 @@ type TelemetrySpan struct{
 	Kind string `json:"span_kind"`
 	StartTime int64 `json:"start_time"`
 	EndTime int64 `json:"end_time"`
-	Duration int64 `json:"duration"`
+	Duration float64 `json:"duration"`
 
 	// resource->attributes[]->key('service.name')
 	ServiceName string `json:"service_name"`
@@ -60,9 +60,9 @@ type TelemetrySpan struct{
 	// spans->attributes[]->key('net.peer.name')
 	HostName string `json:"host_name"`
 	// spans->attributes[]->key('net.peer.port')
-	HostPort string `json:"host_port"`
+	HostPort int64 `json:"host_port"`
 	// spans->attributes[]->key('thread.id')
-	ThreadId string `json:"thread_id"`
+	ThreadId int64 `json:"thread_id"`
 	// spans->attributes[]->key('thread.name')
 	ThreadName string  `json:"thread_name"`
 	// spans->attributes[]->key('db.system')
@@ -78,21 +78,23 @@ type TelemetrySpan struct{
 	// spans->attributes[]->key('http.method') 
 	HttpMethod string `json:"http_method"`
 	// spans->attributes[]->key('http.status_code') 
-	HttpStatusCode string `json:"http_status_code"`
+	HttpStatusCode int64 `json:"http_status_code"`
 
 	// if parentspanid is empty. 
 	IsRoot bool `json:"root"`
+	// if parentspanid is empty. 
+	HasError bool `json:"error"`
 
-	ResourceAttributes telemetryAttributes  `json:"ResourceAttributes"`
-	SpanAttributes telemetryAttributes  `json:"SpanAttributes"`
-	TraceState string `json:"TraceState"`
-	Events []TelemetrySpanEvent `json:"Events"`
-	Links []TelemetrySpanLink `json:"Links"`
-	StatusCode string `json:"status.code"`
-	StatusMsg string `json:"status.msg"`
-	DroppedAttributesCount uint32 `json:"DroppedAttributesCount"`
-	DroppedLinksCount uint32 `json:"DroppedLinksCount"`
-	DroppedEventsCount uint32 `json:"DroppedEventsCount"`
+	resourceAttributes telemetryAttributes  //`json:"ResourceAttributes"`
+	spanAttributes telemetryAttributes  //`json:"SpanAttributes"`
+	traceState string //`json:"TraceState"`
+	spanEvents []TelemetrySpanEvent //`json:"Events"`
+	spanLinks []TelemetrySpanLink //`json:"Links"`
+	statusCode string //`json:"status.code"`
+	statusMsg string //`json:"status.msg"`
+	droppedAttributesCount uint32 //`json:"DroppedAttributesCount"`
+	droppedLinksCount uint32 //`json:"DroppedLinksCount"`
+	droppedEventsCount uint32 //`json:"DroppedEventsCount"`
 }
 
 type TelemetryLog struct {

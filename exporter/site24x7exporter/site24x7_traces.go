@@ -51,18 +51,19 @@ func (e *site24x7exporter) CreateTelemetrySpan(span pdata.Span,
 			Name: spanEvt.Name(),
 			EventAttributes: spanEvt.Attributes().AsRaw(),
 		}
-		exMsg,found := telEvt.EventAttributes["exception.message"]
-		if found {
-			exceptionMessages = append(exceptionMessages, exMsg.(string))
-		}
+		if telEvt.EventAttributes != nil {
 
-		exST, found := telEvt.EventAttributes["exception.stacktrace"]
-		if found {
-			exceptionStackTraces = append(exceptionStackTraces, exST.(string))
-		}
-		exType, found := telEvt.EventAttributes["exception.type"]
-		if found {
-			exceptionTypes = append(exceptionTypes, exType.(string))
+			if exMsg,found := telEvt.EventAttributes["exception.message"] ; found {
+				exceptionMessages = append(exceptionMessages, exMsg.(string))
+			}
+			
+			if exST, found := telEvt.EventAttributes["exception.stacktrace"] ; found {
+				exceptionStackTraces = append(exceptionStackTraces, exST.(string))
+			}
+			
+			if exType, found := telEvt.EventAttributes["exception.type"] ; found {
+				exceptionTypes = append(exceptionTypes, exType.(string))
+			}
 		}
 		telEvents = append(telEvents, telEvt)
 	}
@@ -77,9 +78,30 @@ func (e *site24x7exporter) CreateTelemetrySpan(span pdata.Span,
 		telLinks = append(telLinks, telLink)
 	}
 	spanState := span.Status()
+	spanStatus := spanState.Code().String()
+	hasError := false
+	switch spanStatus {
+	case "STATUS_CODE_ERROR":
+		hasError = true
+	}
+
+	spanKind := "UNSPECIFIED"
+	switch span.Kind() {
+	case pdata.SpanKindInternal:
+		spanKind="INTERNAL"
+	case pdata.SpanKindServer:
+		spanKind="SERVER"
+	case pdata.SpanKindClient:
+		spanKind="CLIENT"
+	case pdata.SpanKindProducer:
+		spanKind="PRODUCER"
+	case pdata.SpanKindConsumer:
+		spanKind="CONSUMER"
+	}
 
 	// Host attributes
-	var hostIp, hostName, hostPort string
+	var hostIp, hostName, threadname string
+	var hostPort,threadid int64
 	if attrval,found := spanAttr["net.peer.ip"]; found {
 		hostIp = attrval.(string)
 	}
@@ -87,12 +109,11 @@ func (e *site24x7exporter) CreateTelemetrySpan(span pdata.Span,
 		hostName = attrval.(string)
 	}
 	if attrval,found := spanAttr["net.peer.port"]; found {
-		hostPort = attrval.(string)
+		hostPort = attrval.(int64)
 	}
 	// Thread attributes
-	var threadid, threadname string
 	if attrval,found := spanAttr["thread.id"]; found {
-		threadid = attrval.(string)
+		threadid = attrval.(int64)
 	}
 	if attrval,found := spanAttr["thread.name"]; found {
 		threadname = attrval.(string)
@@ -112,7 +133,8 @@ func (e *site24x7exporter) CreateTelemetrySpan(span pdata.Span,
 		dbconnstr = attrval.(string)
 	}
 	// Http attributes
-	var httpurl, httpmethod, httpstatus string
+	var httpurl, httpmethod string
+	var httpstatus int64
 	if attrval,found := spanAttr["http.url"]; found {
 		httpurl = attrval.(string)
 	}
@@ -120,31 +142,32 @@ func (e *site24x7exporter) CreateTelemetrySpan(span pdata.Span,
 		httpmethod = attrval.(string)
 	}
 	if attrval,found := spanAttr["http.status_code"]; found {
-		httpstatus = attrval.(string)
+		httpstatus = attrval.(int64)
 	}
 
 	isRoot := span.ParentSpanID().IsEmpty()
+	
 	
 	tspan := TelemetrySpan{
 		SpanId: span.SpanID().HexString(),
 		TraceId: span.TraceID().HexString(),
 		ParentSpanId: span.ParentSpanID().HexString(),
 		Name: span.Name(),
-		Kind: span.Kind().String(),
+		Kind: spanKind,
 		StartTime: startTime,
 		EndTime: endTime,
-		Duration: (endTime - startTime),
-		ResourceAttributes: resourceAttr,
-		SpanAttributes: spanAttr,
+		Duration: float64(endTime - startTime) / float64(time.Millisecond),
 		ServiceName: serviceName,
-		Events: telEvents,
-		Links: telLinks,
-		StatusCode: spanState.Code().String(),
-		StatusMsg: spanState.Message(),
-		DroppedAttributesCount: span.DroppedAttributesCount(),
-		DroppedLinksCount: span.DroppedLinksCount(),
-		DroppedEventsCount: span.DroppedEventsCount(),
-		TraceState: string(span.TraceState()),
+		resourceAttributes: resourceAttr,
+		spanAttributes: spanAttr,
+		traceState: string(span.TraceState()),
+		spanEvents: telEvents,
+		spanLinks: telLinks,
+		statusCode: spanState.Code().String(),
+		statusMsg: spanState.Message(),
+		droppedAttributesCount: span.DroppedAttributesCount(),
+		droppedLinksCount: span.DroppedLinksCount(),
+		droppedEventsCount: span.DroppedEventsCount(),
 
 		ExceptionMessage: exceptionMessages,
 		ExceptionStackTrace: exceptionStackTraces,
@@ -172,6 +195,7 @@ func (e *site24x7exporter) CreateTelemetrySpan(span pdata.Span,
 		HttpStatusCode: httpstatus,
 
 		IsRoot: isRoot,
+		HasError: hasError,
 
 	}
 	return tspan;
@@ -197,9 +221,18 @@ func (e *site24x7exporter) ConsumeTraces(_ context.Context, td pdata.Traces) err
 		rspans := resourcespans.At(i)
 		resource := rspans.Resource()
 		resourceAttr := resource.Attributes().AsRaw()
-		serviceName := resourceAttr["service.name"].(string)
-		telSDKName := resourceAttr["telemetry.sdk.name"].(string)
-		telSDKLang := resourceAttr["telemetry.sdk.language"].(string)
+
+		var serviceName, telSDKLang, telSDKName string
+		if val,found := resourceAttr["service.name"]; found {
+			serviceName = val.(string)
+		}
+		if val,found := resourceAttr["telemetry.sdk.name"]; found {
+			telSDKName = val.(string)
+		}
+		if val,found := resourceAttr["telemetry.sdk.language"]; found {
+			telSDKLang = val.(string)
+		}
+
 		instSpans := rspans.InstrumentationLibrarySpans()
 
 		for j := 0; j < instSpans.Len(); j++ {

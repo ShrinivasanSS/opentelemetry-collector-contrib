@@ -17,6 +17,7 @@ package site24x7exporter
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -272,6 +273,7 @@ func (e *site24x7exporter) ConsumeTraces(_ context.Context, td pdata.Traces) err
 	responseBody := bytes.NewBuffer(buf)
 	fmt.Println("Sending to Site24x7: ", responseBody)
 	fmt.Fprint(&urlBuf, e.url, "?license.key=", e.apikey)
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: e.insecure}
 	resp, err := http.Post(urlBuf.String(), "application/json", responseBody)
 	io.WriteString(e.file, "\nPosting telemetry data to url. \n")
 	if err != nil {

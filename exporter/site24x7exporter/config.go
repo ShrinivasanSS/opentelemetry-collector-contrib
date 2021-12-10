@@ -40,6 +40,8 @@ type Config struct {
 	Url string `mapstructure:"url"`
 	// API Key of site24x7.
 	APIKEY string `mapstructure:"apikey"`
+	// Is url insecure? 
+	Insecure bool `mapstructure:"insecure"`
 }
 
 var _ config.Exporter = (*Config)(nil)

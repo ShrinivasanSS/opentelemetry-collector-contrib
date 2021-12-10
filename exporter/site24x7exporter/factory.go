@@ -57,6 +57,7 @@ func createTracesExporter(
 			path: cfg.(*Config).Path,
 			url:  cfg.(*Config).Url,
 			apikey: cfg.(*Config).APIKEY,
+			insecure: cfg.(*Config).Insecure,
 		}
 	})
 	return exporterhelper.NewTracesExporter(
@@ -78,6 +79,7 @@ func createMetricsExporter(
 			path: cfg.(*Config).Path,
 			url:  cfg.(*Config).Url,
 			apikey: cfg.(*Config).APIKEY,
+			insecure: cfg.(*Config).Insecure,
 		}
 	})
 	return exporterhelper.NewMetricsExporter(
@@ -99,6 +101,7 @@ func createLogsExporter(
 			path: cfg.(*Config).Path,
 			url:  cfg.(*Config).Url,
 			apikey: cfg.(*Config).APIKEY,
+			insecure: cfg.(*Config).Insecure,
 		}
 	})
 	return exporterhelper.NewLogsExporter(

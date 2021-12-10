@@ -18,6 +18,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -149,6 +150,10 @@ func (e *site24x7exporter) ConsumeLogs(_ context.Context, ld pdata.Logs) error {
 	if err != nil {
 		//Handle Error
 		fmt.Println("Error initializing Url: ", err)
+		io.WriteString(e.file, "\nError in posting logs to url. \n")
+		errstr := err.Error()
+		io.WriteString(e.file, errstr)
+		return err
 	}
 
 	req.Header = http.Header{
@@ -160,12 +165,15 @@ func (e *site24x7exporter) ConsumeLogs(_ context.Context, ld pdata.Logs) error {
 		"Content-Encoding": []string{"gzip"},
 		"User-Agent": []string{"AWS-Lambda"},
 	}
-	
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: e.insecure}
 	res , err := client.Do(req)
 	if err != nil {
 		//Handle Error
 		fmt.Println("Error initializing Url: ", err)
-
+		io.WriteString(e.file, "\nError in posting logs to url. \n")
+		errstr := err.Error()
+		io.WriteString(e.file, errstr)
+		return err
 	}
 	io.WriteString(e.file, "\nPosting telemetry logs to url. \n")
 	uploadid := res.Header.Values("x-uploadid")

@@ -43,6 +43,7 @@ type site24x7exporter struct {
 	path  string
 	url   string
 	apikey string
+	insecure bool
 	file  io.WriteCloser
 	mutex sync.Mutex
 }

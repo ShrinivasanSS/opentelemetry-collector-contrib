@@ -16,18 +16,20 @@ package site24x7exporter
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/collector/model/pdata"
 )
 
-func (e *site24x7exporter) CreateLogItem(logrecord pdata.LogRecord, resourceAttr map[string]interface{}) (TelemetryLog) {
+func (e *site24x7exporter) CreateLogItem(logrecord pdata.LogRecord, resourceAttr map[string]interface{}) TelemetryLog {
 	startTime := (logrecord.Timestamp().AsTime().UnixNano() / int64(time.Millisecond))
 	tlogBodyType := logrecord.Body().Type()
 	tlogMsg := logrecord.Name()
@@ -36,7 +38,7 @@ func (e *site24x7exporter) CreateLogItem(logrecord pdata.LogRecord, resourceAttr
 	switch tlogBodyType {
 	case pdata.AttributeValueTypeString:
 		tlogMsg = logrecord.Body().AsString()
-		io.WriteString(e.file, "\nLog Message from Body: \t" + tlogMsg)
+		io.WriteString(e.file, "\nLog Message from Body: \t"+tlogMsg)
 
 	case pdata.AttributeValueTypeMap:
 		tlogKvList := logrecord.Body().MapVal().AsRaw()
@@ -47,29 +49,29 @@ func (e *site24x7exporter) CreateLogItem(logrecord pdata.LogRecord, resourceAttr
 		} else {
 			tlogMsg = logrecord.Body().AsString()
 		}
-		
-		if tlogKvSpanId,found := tlogKvList["span_id"]; found {
+
+		if tlogKvSpanId, found := tlogKvList["span_id"]; found {
 			tlogSpanId = tlogKvSpanId.(string)
 		}
-		
-		if tlogKvTraceId,found := tlogKvList["trace_id"]; found {
+
+		if tlogKvTraceId, found := tlogKvList["trace_id"]; found {
 			tlogTraceId = tlogKvTraceId.(string)
 		}
 	}
 
 	tlog := TelemetryLog{
-		Timestamp: startTime,
-		S247UID: "otel-s247exporter",
-		LogLevel: logrecord.SeverityText(),
-		TraceId: tlogTraceId,
-		SpanId: tlogSpanId,
-		TraceFlag: logrecord.Flags(),
+		Timestamp:          startTime,
+		S247UID:            "otel-s247exporter",
+		LogLevel:           logrecord.SeverityText(),
+		TraceId:            tlogTraceId,
+		SpanId:             tlogSpanId,
+		TraceFlag:          logrecord.Flags(),
 		ResourceAttributes: resourceAttr,
-		LogAttributes: logrecord.Attributes().AsRaw(),
-		Name: logrecord.Name(),
-		Message: tlogMsg,
+		LogAttributes:      logrecord.Attributes().AsRaw(),
+		Name:               logrecord.Name(),
+		Message:            tlogMsg,
 	}
-	return tlog;
+	return tlog
 }
 
 func (e *site24x7exporter) ConsumeLogs(_ context.Context, ld pdata.Logs) error {
@@ -81,7 +83,6 @@ func (e *site24x7exporter) ConsumeLogs(_ context.Context, ld pdata.Logs) error {
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
-	var urlBuf bytes.Buffer
 	logCount := ld.LogRecordCount()
 	logList := make([]TelemetryLog, 0, logCount)
 	for i := 0; i < ld.ResourceLogs().Len(); i++ {
@@ -94,7 +95,7 @@ func (e *site24x7exporter) ConsumeLogs(_ context.Context, ld pdata.Logs) error {
 			ilogItems := ilogs.Logs()
 			for k := 0; k < ilogItems.Len(); k++ {
 				rawLogitem := ilogItems.At(k)
-				logItem := e.CreateLogItem( rawLogitem, resourceAttr)
+				logItem := e.CreateLogItem(rawLogitem, resourceAttr)
 				logList = append(logList, logItem)
 			}
 		}
@@ -102,22 +103,19 @@ func (e *site24x7exporter) ConsumeLogs(_ context.Context, ld pdata.Logs) error {
 
 	io.WriteString(e.file, "\nTransformed telemetry logs to site24x7 format. \n")
 	buf, err := json.Marshal(logList)
-	if err != nil{
+	if err != nil {
 		io.WriteString(e.file, "\nError in converting telemetry logs. \n")
 		errstr := err.Error()
 		io.WriteString(e.file, errstr)
 		return err
 	}
+	
+	/*
+	var urlBuf bytes.Buffer
 	responseBody := bytes.NewBuffer(buf)
-	fmt.Fprint(&urlBuf, e.url, "?license.key=",e.apikey);
+	fmt.Fprint(&urlBuf, e.url, "?license.key=", e.apikey)
+	fmt.Println("Sending to Site24x7: ", responseBody)
 	resp, err := http.Post(urlBuf.String(), "application/json", responseBody)
-	io.WriteString(e.file, "\nPosting telemetry logs to url. \n")
-	if err != nil {
-		io.WriteString(e.file, "\nError in posting logs to url. \n")
-		errstr := err.Error()
-		io.WriteString(e.file, errstr)
-		return err
-	}
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
@@ -126,5 +124,59 @@ func (e *site24x7exporter) ConsumeLogs(_ context.Context, ld pdata.Logs) error {
 	if _, err := e.file.Write(body); err != nil {
 		return err
 	}
+	*/
+	/*
+		var gzipbuf bytes.Buffer
+		gzipRespBody := gzip.NewWriter(&gzipbuf)
+		if _, err := gzipRespBody.Write(&gzipbuf); err != nil {
+			io.WriteString(e.file, "\n Compressing to GZIP failed. \n")
+			return err
+		}
+		if err := g.close(); err != nil {
+			io.WriteString(e.file, "\n Closing GZIP buffere failed\n")
+			return err
+		}
+		resp, err := http.Post(urlBuf.String(), "application/json", &gzipbuf)
+	*/
+
+	client := http.Client{}
+
+	var gzbuf bytes.Buffer
+	g := gzip.NewWriter(&gzbuf)
+	g.Write(buf)
+	g.Close()
+	req , err := http.NewRequest("POST", e.url, &gzbuf)
+	if err != nil {
+		//Handle Error
+		fmt.Println("Error initializing Url: ", err)
+	}
+
+	req.Header = http.Header{
+		"X-DeviceKey": []string{e.apikey},
+		"Content-Type": []string{"application/json"},
+		"X-LogType": []string{"otellogs"},
+		"X-StreamMode": []string{"1"},
+		"Log-Size": []string{strconv.Itoa(len(logList))},
+		"Content-Encoding": []string{"gzip"},
+		"User-Agent": []string{"AWS-Lambda"},
+	}
+	
+	res , err := client.Do(req)
+	if err != nil {
+		//Handle Error
+		fmt.Println("Error initializing Url: ", err)
+
+	}
+	io.WriteString(e.file, "\nPosting telemetry logs to url. \n")
+	uploadid := res.Header.Values("x-uploadid")
+	io.WriteString(e.file, "Upload ID: " + strings.Join(uploadid," "))
+	fmt.Println("Uploaded logs information: ", res.Header)
+	if err != nil {
+		io.WriteString(e.file, "\nError in posting logs to url. \n")
+		errstr := err.Error()
+		io.WriteString(e.file, errstr)
+		return err
+	}
+	
 	return err
 }

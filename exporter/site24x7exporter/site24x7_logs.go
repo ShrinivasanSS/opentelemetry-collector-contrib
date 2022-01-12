@@ -163,7 +163,7 @@ func (e *site24x7exporter) ConsumeLogs(_ context.Context, ld pdata.Logs) error {
 		"X-StreamMode": []string{"1"},
 		"Log-Size": []string{strconv.Itoa(len(logList))},
 		"Content-Encoding": []string{"gzip"},
-		"User-Agent": []string{"AWS-Lambda"},
+		"User-Agent": []string{"site24x7exporter"},
 	}
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: e.insecure}
 	res , err := client.Do(req)

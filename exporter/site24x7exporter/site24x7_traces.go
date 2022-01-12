@@ -16,6 +16,7 @@ package site24x7exporter
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -23,6 +24,8 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"go.opentelemetry.io/collector/model/pdata"
@@ -34,7 +37,8 @@ func (e *site24x7exporter) CreateTelemetrySpan(span pdata.Span,
 	instLibrary string,
 	instLibraryVersion string,
 	telSDKLang string,
-	telSDKName string) TelemetrySpan {
+	telSDKName string,
+	rootSpanId string,) TelemetrySpan {
 
 	spanAttr := span.Attributes().AsRaw()
 	startTime := (span.StartTimestamp().AsTime().UnixNano()) // int64(time.Millisecond))
@@ -159,11 +163,17 @@ func (e *site24x7exporter) CreateTelemetrySpan(span pdata.Span,
 	traceId := span.TraceID().HexString()
 	parentspanId := span.ParentSpanID().HexString()
 	spanName := span.Name()
+	
+	//fmt.Println("Creating telemetry span: Trace/Span/Parent/Root:  ", traceId," / ", spanid," / ", parentspanId," / ", rootSpanId)
+	startTimeMs := (startTime / int64(time.Millisecond))
 
 	tspan := TelemetrySpan{
+		Timestamp:          	startTimeMs,
+		S247UID:	            "otel-s247exporter",
 		SpanId:                 spanid,
 		TraceId:                traceId,
 		ParentSpanId:           parentspanId,
+		RootSpanId: 			rootSpanId,
 		Name:                   spanName,
 		Kind:                   spanKind,
 		StartTime:              startTime,
@@ -224,11 +234,41 @@ func (e *site24x7exporter) ConsumeTraces(_ context.Context, td pdata.Traces) err
 	e.mutex.Lock()
 	defer e.mutex.Unlock()
 
-	var urlBuf bytes.Buffer
 	resourcespans := td.ResourceSpans()
 	spanCount := td.SpanCount()
+	rootSpanList := make(map[string]string)
 
 	spanList := make([]TelemetrySpan, 0, spanCount)
+	
+	t := time.Now()
+	fmt.Println(t, "Begin formatting spans ", spanCount)
+
+	for i := 0; i < resourcespans.Len(); i++ {
+		rspans := resourcespans.At(i)
+		instSpans := rspans.InstrumentationLibrarySpans()
+		// processing root id before sending in arh
+		for j := 0; j < instSpans.Len(); j++ {
+			ispans := instSpans.At(j)
+			ispanItems := ispans.Spans()
+
+			for k := 0; k < ispanItems.Len(); k++ {
+				span := ispanItems.At(k)
+				var rootSpanId string
+				var traceId string
+				if span.ParentSpanID().IsEmpty() {
+					//rootSpanId = span.SpanID().HexString()
+					traceId = span.TraceID().HexString()
+					rootSpanId = span.Name()
+					//parentSpanId = "nil"
+					rootSpanList[traceId] = rootSpanId
+					//fmt.Println("Formatting spans: Trace/Root:  ", traceId," / ", rootSpanId)
+				} 
+			}
+		}
+	}
+
+	t = time.Now()
+	fmt.Println(t, "Completed formatting meta-data")
 	for i := 0; i < resourcespans.Len(); i++ {
 		rspans := resourcespans.At(i)
 		resource := rspans.Resource()
@@ -246,22 +286,34 @@ func (e *site24x7exporter) ConsumeTraces(_ context.Context, td pdata.Traces) err
 		}
 
 		instSpans := rspans.InstrumentationLibrarySpans()
-
+		
 		for j := 0; j < instSpans.Len(); j++ {
 			ispans := instSpans.At(j)
 			instLibName := ispans.InstrumentationLibrary().Name()
 			instLibVer := ispans.InstrumentationLibrary().Version()
 			ispanItems := ispans.Spans()
+
 			for k := 0; k < ispanItems.Len(); k++ {
 				span := ispanItems.At(k)
+				
+				//traceId := span.TraceID().HexString()
+				//spanId := span.SpanID().HexString()
+				//parentSpanId := span.ParentSpanID().HexString()
+
+				rootSpanId := rootSpanList[span.TraceID().HexString()]
+
+				//fmt.Println("Formatting spans: Trace/Span/Parent/Root:  ", traceId," / ", spanId," / ", parentSpanId," / ", rootSpanId)
+				
 				s247span := e.CreateTelemetrySpan(span, resourceAttr,
 					serviceName,
 					instLibName, instLibVer,
-					telSDKLang, telSDKName)
+					telSDKLang, telSDKName, rootSpanId)
 				spanList = append(spanList, s247span)
 			}
 		}
 	}
+	t = time.Now()
+	fmt.Println(t, "Completed formatting spans ", spanCount)
 	io.WriteString(e.file, "\nTransformed telemetry data to site24x7 format. \n")
 	buf, err := json.Marshal(spanList)
 	if err != nil {
@@ -270,24 +322,90 @@ func (e *site24x7exporter) ConsumeTraces(_ context.Context, td pdata.Traces) err
 		io.WriteString(e.file, errstr)
 		return err
 	}
+	
+	if strings.Contains(e.url, "catalyst") {
+		err = e.SendCatalyst(buf)
+		t = time.Now()
+		fmt.Println(t, "Completed exporting spans catalyst", spanCount)
+	} else {
+		err = SendAppLogs(e, buf, len(spanList))
+		t = time.Now()
+		fmt.Println(t, "Completed exporting spans applogs", spanCount)
+	}
+
+	return err
+}
+
+func (e *site24x7exporter) SendCatalyst(buf []byte) error {
+	// Deprecated end-point. 
+	var urlBuf bytes.Buffer
 	responseBody := bytes.NewBuffer(buf)
-	fmt.Println("Sending to Site24x7: ", responseBody)
+	//fmt.Println("Sending to Site24x7: ", responseBody)
 	fmt.Fprint(&urlBuf, e.url, "?license.key=", e.apikey)
 	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: e.insecure}
 	resp, err := http.Post(urlBuf.String(), "application/json", responseBody)
-	io.WriteString(e.file, "\nPosting telemetry data to url. \n")
 	if err != nil {
 		io.WriteString(e.file, "\nError in posting data to url. \n")
 		errstr := err.Error()
 		io.WriteString(e.file, errstr)
 		return err
 	}
+	io.WriteString(e.file, "\nPosting telemetry data to url. \n")
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
 		return err
 	}
 	if _, err := e.file.Write(body); err != nil {
+		return err
+	}
+	return err
+}
+
+func SendAppLogs(e *site24x7exporter, buf []byte, spanCount int) error {
+	client := http.Client{}
+
+	var gzbuf bytes.Buffer
+	g := gzip.NewWriter(&gzbuf)
+	g.Write(buf)
+	g.Close()
+	req , err := http.NewRequest("POST", e.url, &gzbuf)
+	if err != nil {
+		//Handle Error
+		fmt.Println("Error initializing Url: ", err)
+		io.WriteString(e.file, "\nError in posting logs to url. \n")
+		errstr := err.Error()
+		io.WriteString(e.file, errstr)
+		return err
+	}
+
+	req.Header = http.Header{
+		"X-DeviceKey": []string{e.apikey},
+		"Content-Type": []string{"application/json"},
+		"X-LogType": []string{"s247apmopentelemetrytracing"},
+		"X-StreamMode": []string{"1"},
+		"Log-Size": []string{strconv.Itoa(spanCount)},
+		"Content-Encoding": []string{"gzip"},
+		"User-Agent": []string{"site24x7exporter"},
+	}
+	http.DefaultTransport.(*http.Transport).TLSClientConfig = &tls.Config{InsecureSkipVerify: e.insecure}
+	res , err := client.Do(req)
+	if err != nil {
+		//Handle Error
+		fmt.Println("Error initializing Url: ", err)
+		io.WriteString(e.file, "\nError in posting traces to url. \n")
+		errstr := err.Error()
+		io.WriteString(e.file, errstr)
+		return err
+	}
+	io.WriteString(e.file, "\nPosting telemetry traces to url. \n")
+	uploadid := res.Header.Values("x-uploadid")
+	io.WriteString(e.file, "Upload ID: " + strings.Join(uploadid," "))
+	fmt.Println("Uploaded logs information: ", res.Header)
+	if err != nil {
+		io.WriteString(e.file, "\nError in posting logs to url. \n")
+		errstr := err.Error()
+		io.WriteString(e.file, errstr)
 		return err
 	}
 	return err

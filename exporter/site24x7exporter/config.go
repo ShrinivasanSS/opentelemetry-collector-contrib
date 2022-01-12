@@ -34,8 +34,9 @@ type Config struct {
 	// The current supported strategy is exponential backoff.
 	RetrySettings exporterhelper.RetrySettings `mapstructure:"retry"`
 
-	// Path of the file to write to. Path is relative to current directory.
+	// Path of the file to write instance data, relative to current directory.
 	Path string `mapstructure:"path"`
+
 	// URL to which the opentelemetry data is pushed to.
 	Url string `mapstructure:"url"`
 	// API Key of site24x7.
@@ -48,9 +49,9 @@ var _ config.Exporter = (*Config)(nil)
 
 // Validate checks if the exporter configuration is valid
 func (cfg *Config) Validate() error {
-	if cfg.Path == "" {
-		return errors.New("path must be non-empty")
-	}
+	// if cfg.Path == "" {
+	// 	return errors.New("path must be non-empty")
+	// }
 	if cfg.Url == "" {
 		return errors.New("url must be non-empty")
 	}

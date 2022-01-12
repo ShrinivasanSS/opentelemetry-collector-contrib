@@ -30,9 +30,12 @@ type TelemetryCustomParam struct {
 }
 
 type TelemetrySpan struct {
+	Timestamp    int64	 `json:"_zl_timestamp"`
+	S247UID      string	 `json:"s247agentuid"`
 	TraceId      string  `json:"trace_id,omitempty"`
 	SpanId       string  `json:"span_id,omitempty"`
 	ParentSpanId string  `json:"parent_id,omitempty"`
+	RootSpanId	 string  `json:"origin_name,omitempty"`
 	Name         string  `json:"name,omitempty"`
 	Kind         string  `json:"span_kind,omitempty"`
 	StartTime    int64   `json:"start_time,omitempty"`
